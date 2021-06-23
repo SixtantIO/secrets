@@ -1,5 +1,17 @@
 (ns io.sixtant.secrets
-  "For storing application secrets on disk with client-side encryption."
+  "For storing application secrets on disk with client-side encryption.
+
+  Uses [pbkdf2](https://en.wikipedia.org/wiki/PBKDF2) with sha512 (100,000
+  iterations) to convert a passphrase into a key, and encrypts the secret data
+  using AES256 CBC + HMAC SHA512.
+
+  Any one secrets file contains an encrypted version of a single
+  [EDN](https://github.com/edn-format/edn) map, with arbitrary levels of
+  labeled nesting.
+
+  By default, the secrets file lives at .secrets.edn in the working directory,
+  but this path can be changed explicitly via `with-path` (or via the `:path`
+  flag at the command line)."
   (:require [buddy.core.codecs :as codecs]
             [buddy.core.nonce :as nonce]
             [buddy.core.crypto :as crypto]
@@ -215,6 +227,7 @@
   [f & args]
   (-> (read-secrets)
       (update :data #(apply f % args))
+      (update :password #(or % (read-password "Password:")))
       (write-secrets)))
 
 

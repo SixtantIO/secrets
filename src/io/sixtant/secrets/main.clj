@@ -36,8 +36,7 @@
 
 
 (defcommand inspect
-  "Inspect the structure of the stored hierarchy for secrets, replacing any
-  secret values with `***`."
+  "Inspect stored secrets in cleartext, with values replaced with '***'."
   ["inspect"
    "inspect :path my-secrets.edn"]
   [_ & args]
@@ -56,8 +55,7 @@
 
 
 (defcommand write
-  "Write the (EDN compliant) secret to the given path with assoc-in logic.
-  (See also: read)"
+  "Write the (EDN compliant) secret at some path (see also: read)."
   ["write \"[:bitso :prod]\" '{:key \"abc\" :secret \"def\"}'"
    "write \"[:bitso :prod :key]\" \"foo\" :path different-file.edn"]
   [_ path secret & args]
@@ -69,8 +67,7 @@
 
 
 (defcommand read
-  "Attempt to read the secret at the given path with get-in logic.
-  (See also: write)."
+  "Read the secret at the given path (see also: write)."
   ["read \"[:bitso :prod]\""
    "read \"[:bitso :prod :key]\""]
   [_ path & args]
@@ -82,8 +79,7 @@
 
 
 (defcommand swap
-  "Eval the function string and apply it to the secrets map, writing the
-  new result."
+  "Eval the clojure function string and use it to update the stored secrets."
   ["swap '#(assoc-in % [:bitso :prod :client-id] 123)'"
    "swap '(fn [x] (update-in x [:bitso :prod] merge {:client-id 123}))'"]
   [_ f & args]
@@ -105,8 +101,10 @@
 
 
 (defcommand with-env
-  "Take a map of string -> secret-path-vector, resolve each secret, and
-  merge the resulting map of string -> secret into the environment variables
+  "Temporarily put secrets in environmental variables and execute a command.
+
+  Uses a map of string -> secret-path-vector, resolves each secret, and
+  merges the resulting map of string -> secret into the environment variables
   before executing the command."
   ["with-env '{\"BITSO_KEY\" \"[:bitso :prod :key]\", \"BITSO_SECRET\" \"[:bitso :prod :secret]\"}' my-script.py"]
   [& args]
@@ -167,10 +165,11 @@
     (assoc x :data (read-string out))))
 
 
-
 (defcommand edit
-  "Edit the encrypted API keys with the default text editor. This uses `vipe`,
-  so it will only work on *nix systems with moreutils installed."
+  "Edit the encrypted API keys with the default text editor.
+
+  This uses `vipe`, so it will only work on *nix systems with moreutils
+  installed."
   ["edit"
    "edit :path some-other-keyfile.edn"]
   [_ & args]
