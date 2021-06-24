@@ -29,7 +29,7 @@ flag at the command line).
 
 One-liner:
 ```
-$ TODO
+$ bash -c "git clone git@github.com:SixtantIO/secrets.git && cd secrets && sudo chmod 755 secrets && sudo mv secrets /usr/local/bin"
 ```
 
 Alternatively, clone this repository, build the jar (`clojure -X:uberjar`),
@@ -46,18 +46,18 @@ instead of using `secrets <options>`.
 On linux systems with `vipe` installed (from the `moreutils` package), you
 can edit an encrypted file using the default system editor:
 
-```
+```clojure
 $ secrets edit :path some-secrets.edn
 ```
 
 After creating a passphrase, the editor will pop up. Write some valid EDN data:
-```
+```clojure
 {:some-service-name {:prod {:key "abc" :secret "123"}}}
 ```
 
 Now when you save & close, the data is encrypted to disk:
 
-```
+```clojure
 $ secrets edit :path some-secrets.edn
 Set password: 
 Confirm password: 
@@ -72,7 +72,7 @@ $ cat some-secrets.edn
 
 Write a key/secret pair for Bitso, labeled `:prod`, using the default secrets
 file, and then read it back:
-```
+```clojure
 $ secrets write "[:bitso :prod]" '{:key "abc" :secret "def"}'
 Password: 
 Encrypting data for writing... Done.
@@ -84,14 +84,14 @@ Password:
 ```
 
 The hierarchy of the secrets file now looks like this:
-```
+```clojure
 $ secrets inspect
 Password: 
 {:bitso {:prod {:key "***", :secret "***"}}}
 ```
 
 Add another secret, maybe a personal key, and watch the hierarchy change:
-```
+```clojure
 $ secrets write "[:bitso :personal]" '{:key "foo"}'
 Password: 
 Encrypting data for writing... Done.
@@ -104,7 +104,7 @@ Password:
 
 You can also evaluate clojure functions against the secrets map, e.g. to list 
 all of the keys nested under `:bitso`:
-```
+```clojure
 $ secrets eval "#(keys (:bitso %))"
 Password: 
 (:prod :personal)
@@ -117,7 +117,7 @@ Use `with-env` to retrieve stored secrets and expose them as environment
 variables to the process launched by some command. 
 
 Quick and dirty example:
-```
+```clojure
 $ secrets with-env '{"KEY" "[:bitso :prod :key]"}' python3 -c "import os; print(os.environ['KEY'])"
 Password: 
 abc
@@ -139,7 +139,7 @@ print(os.environ["API_KEY"])
 print(os.environ["API_SECRET"])
 ```
 
-``` 
+``` clojure
 $ secrets with-env "$(cat prod.env)" python3 app.py
 Password: 
 abc
