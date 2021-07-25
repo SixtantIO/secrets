@@ -29,7 +29,7 @@ flag at the command line).
 
 One-liner:
 ```
-$ bash -c "git clone git@github.com:SixtantIO/secrets.git && cd secrets && sudo chmod 755 secrets && sudo mv secrets /usr/local/bin"
+bash -c "git clone git@github.com:SixtantIO/secrets.git && cd secrets && sudo chmod 755 secrets && sudo mv secrets /usr/local/bin"
 ```
 
 Alternatively, clone this repository, build the jar (`clojure -X:uberjar`),
