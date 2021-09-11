@@ -168,6 +168,17 @@
 ;;; Main API: read & update secrets
 
 
+(def ^:dynamic *password* "See `with-password`." nil)
+
+
+(defmacro with-password
+  "Any calls inside `body` which would otherwise prompt for a password instead
+  use the given `password`."
+  [password & body]
+  `(binding [*password* ~password]
+     ~@body))
+
+
 (def ^:dynamic *secrets* "See `with-secrets`." nil)
 
 
@@ -175,7 +186,7 @@
   "Prefer `with-secrets`."
   []
   (if (.isFile (io/file *path*))
-    (let [p (read-password "Password: ")]
+    (let [p (or *password* (read-password "Password: "))]
       {:data (decrypt-from-disk {:password p :path *path*})
        :password p})
     {:data {}
