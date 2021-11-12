@@ -57,7 +57,7 @@
     (let [temp (temp "encrypted" ".edn")
           data {:bitso {:prod {:key "foo" :secret "bar"}}}]
 
-      ; Write data to a temporary secrets fil
+      ; Write data to a temporary secrets file
       (with-path temp
         (write-secrets {:data data :password "pass"}))
 

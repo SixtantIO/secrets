@@ -10,9 +10,11 @@ Any one secrets file contains an encrypted version of a single
 [EDN](https://github.com/edn-format/edn) map, with arbitrary levels of
 labeled nesting.
 
-By default, the secrets file lives at .secrets.edn in the working directory,
-but this path can be changed explicitly via `with-path` (or via the `:path`
-flag at the command line).
+The path used for the secrets file, in priority order, is one of:
+
+- the one explicitly specified via `with-path` (or `:path` at the command line),
+- the `.secrets.edn` file in the working directory, or
+- the `.secrets.edn` file in the home directory.
 
 
 ## Contents 

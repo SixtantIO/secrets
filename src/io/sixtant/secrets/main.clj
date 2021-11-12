@@ -32,7 +32,7 @@
   "Given all of the leftover `args`, parse out a :path parameter if any,
   otherwise use the default path for secrets."
   [args]
-  (or (get (apply hash-map args) ":path") s/*path*))
+  (or (get (apply hash-map args) ":path") (s/secrets-path)))
 
 
 (defcommand inspect
@@ -111,7 +111,7 @@
   (let [args (rest args)
         [path args] (if (= (first args) :path)
                       [(second args) (rest (rest args))]
-                      [s/*path* args])
+                      [(s/secrets-path) args])
         [vname->path & args] args]
     (assert (string? vname->path) "first parameter is an EDN string")
     (let [vname->path (read-string vname->path)]
@@ -138,7 +138,7 @@
                       (flush)
                       (= (string/lower-case (read-line)) "y")))]
     (if change?
-      (let [p (s/read-password "Set password: ")
+      (let [p (s/read-password (str "Set password for " (s/secrets-path) ": "))
             p' (s/read-password "Confirm password: ")]
         (if (= p p')
           (assoc x :password p)

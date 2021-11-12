@@ -9,9 +9,12 @@
   [EDN](https://github.com/edn-format/edn) map, with arbitrary levels of
   labeled nesting.
 
-  By default, the secrets file lives at .secrets.edn in the working directory,
-  but this path can be changed explicitly via `with-path` (or via the `:path`
-  flag at the command line)."
+  The path used for the secrets file, in priority order, is one of:
+
+  - the one explicitly specified via `with-path` (or `:path` at the command
+    line),
+  - the `.secrets.edn` file in the working directory, or
+  - the `.secrets.edn` file in the home directory."
   (:require [buddy.core.codecs :as codecs]
             [buddy.core.nonce :as nonce]
             [buddy.core.crypto :as crypto]
@@ -27,16 +30,25 @@
 (set! *warn-on-reflection* true)
 
 
-(def ^:dynamic *path*
-  "Location of saved secrets on disk."
-  ".secrets.edn")
+(defn default-secrets-path []
+  (if (.exists (io/file ".secrets.edn"))
+    ".secrets.edn"
+    (let [home (System/getProperty "user.home")]
+      (.getCanonicalPath (io/file home ".secrets.edn")))))
 
 
+(def ^:dynamic *path* "Explicitly bound path." nil)
 (defmacro with-path
   "Set the file path used for saved secrets."
   [path & body]
   `(binding [*path* ~path]
      ~@body))
+
+
+(defn secrets-path
+  "Location of saved secrets on disk."
+  []
+  (or *path* (default-secrets-path)))
 
 
 ;;; Primitives for key stretching & encryption
@@ -185,12 +197,13 @@
 (defn read-secrets
   "Prefer `with-secrets`."
   []
-  (if (.isFile (io/file *path*))
-    (let [p (or *password* (read-password "Password: "))]
-      {:data (decrypt-from-disk {:password p :path *path*})
-       :password p})
-    {:data {}
-     :password nil}))
+  (let [path (secrets-path)]
+    (if (.isFile (io/file path))
+      (let [p (or *password* (read-password (str "Password for " path ": ")))]
+        {:data (decrypt-from-disk {:password p :path path})
+         :password p})
+      {:data {}
+       :password nil})))
 
 
 (defn write-secrets
@@ -198,9 +211,10 @@
   [{:keys [data password]}]
   (print "Encrypting data for writing...")
   (flush)
-  (let [enc (encrypt-to-disk data {:password password :path *path*})]
+  (let [path (secrets-path)
+        enc (encrypt-to-disk data {:password password :path path})]
     (println " Done.")
-    (println "Wrote" (count (.getBytes (prn-str enc))) "bytes.")
+    (println "Wrote" (count (.getBytes (prn-str enc))) "bytes to" (str path "."))
     enc))
 
 
@@ -259,7 +273,7 @@
   (defn rand-n [coll n] (repeatedly n #(nth coll (rng-int (count coll)))))
   (def passphrase
     (let [words (string/split-lines (slurp "/usr/share/dict/words"))]
-      (string/join " " (rand-n words 6))))
+      (string/join " " (rand-n words 5))))
 
   ;; Encrypt some data with the passphrase to send to somebody else
   (encrypt (prn-str {:foo :bar}) passphrase)
