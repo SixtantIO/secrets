@@ -29,9 +29,11 @@ The path used for the secrets file, in priority order, is one of:
 - Make it executable.
 - Move it somewhere on your `$PATH`.
 
-One-liner:
+
 ```
-bash -c "git clone git@github.com:SixtantIO/secrets.git && cd secrets && sudo chmod 755 secrets && sudo mv secrets /usr/local/bin"
+wget https://github.com/sixtantIO/secrets/releases/latest/download/secrets
+chmod +x secrets
+mv secrets /usr/local/bin
 ```
 
 Alternatively, clone this repository, build the jar (`clojure -X:uberjar`),
