@@ -58,47 +58,49 @@
 (defn b64->bytes [^String s] (.decode (Base64/getDecoder) (.getBytes s)))
 
 
-(defn slow-key-stretch-with-pbkdf2 [weak-text-key n-bytes]
-  (kdf/get-bytes
-    (kdf/engine {:key weak-text-key
-                 :salt (b64->bytes "j3gT0zoPJos=")
-                 :alg :pbkdf2
-                 :digest :sha512
-                 :iterations 1e5}) ;; target O(100ms) on commodity hardware
-    n-bytes))
+(defn gen-random-salt []
+  "Generate a 16 byte random salt."
+  (bytes->b64 (nonce/random-bytes 16)))
 
+(defn slow-key-stretch-with-pbkdf2 [weak-text-key salt n-bytes]
+  "Modified to take in a salt parameter."
+  (kdf/get-bytes
+   (kdf/engine {:key weak-text-key
+                :salt (b64->bytes salt)
+                :alg :pbkdf2
+                :digest :sha512
+                :iterations 1e5}) ;; target O(100ms) on commodity hardware
+   n-bytes))
 
 (defn encrypt
-  "Encrypt and return a {:data <b64>, :iv <b64>} that can be decrypted with the
-  same `password`.
-
-  Performs pbkdf2 key stretching with quite a few iterations on `password`."
+  "Modified to generate and store a random salt."
   [clear-text password]
-  (let [initialization-vector (nonce/random-bytes 16)]
+  (let [initialization-vector (nonce/random-bytes 16)
+        salt (gen-random-salt)]
     {:data (bytes->b64
-             (crypto/encrypt
-               (codecs/to-bytes clear-text)
-               (slow-key-stretch-with-pbkdf2 password 64)
-               initialization-vector
-               {:algorithm :aes256-cbc-hmac-sha512}))
-     :iv (bytes->b64 initialization-vector)}))
-
+            (crypto/encrypt
+              (codecs/to-bytes clear-text)
+              (slow-key-stretch-with-pbkdf2 password salt 64)
+              initialization-vector
+              {:algorithm :aes256-cbc-hmac-sha512}))
+     :iv (bytes->b64 initialization-vector)
+     :salt salt}))
 
 (defn decrypt
-  "Decrypt and return the clear text for some output of `encrypt` given the
-  same `password` used during encryption."
-  [{:keys [data iv]} password]
+  "Modified to take in a salt parameter."
+  [{:keys [data iv salt]} password]
   (try
     (codecs/bytes->str
       (crypto/decrypt
         (b64->bytes data)
-        (slow-key-stretch-with-pbkdf2 password 64)
+        (slow-key-stretch-with-pbkdf2 password salt 64)
         (b64->bytes iv)
         {:algorithm :aes256-cbc-hmac-sha512}))
     (catch ExceptionInfo e
       (if (= (:type (ex-data e)) :validation)
         (throw (ex-info "passphrase incorrect" {}))
         (throw e)))))
+
 
 
 (comment
