@@ -258,6 +258,22 @@
       (write-secrets)))
 
 
+(defn dissoc-in
+  "Dissociates an entry at a nested associative structure
+   found via a sequence of keys."
+  [m [k & ks]]
+  (if ks
+    (if-let [submap (get m k)]
+      (assoc m k (dissoc-in submap ks))
+      m)
+    (dissoc m k)))
+
+(defn delete-secret!
+  "Deletes a secret at the given path."
+  [ks]
+  (swap-secrets! dissoc-in ks))
+
+
 (comment
   ;;; Example: accessing secrets
 
@@ -282,3 +298,21 @@
 
   ;; Then tell them they can decrypt with
   (read-string (decrypt *1 passphrase)))
+
+(comment 
+  ;; The delete-secret! function is used to remove a secret from the stored secrets. 
+  ;; It requires a key sequence argument (a vector of keys) representing the nested path to the secret to be removed.
+
+  ;; The argument `[:some-ex :personal]` means that we are targeting the secret located in the `:personal` map 
+  ;; which is nested inside the `:some-ex` map in the secrets store. 
+
+  ;; Example usage:
+
+  (delete-secret! [:some-ex :personal])
+
+  ;; This will remove the `:personal` secret stored under `:some-ex`. After execution, the secret will no longer exist in the storage. 
+
+  ;; If you try to retrieve this secret after deleting it with `secrets`, you will get a nil value or an error, 
+  ;; depending on whether you're trying to access the secret directly or as part of a nested structure.
+  )
+

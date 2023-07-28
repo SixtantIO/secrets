@@ -209,11 +209,21 @@
                         (subs s (max (- width (inc (count omit))) 0) (count s)))
                       width)))))))))))
 
+(defcommand delete
+  "Delete a secret at a specified path."
+  ["delete \"[:some-ex :personal]\""]
+  [_ path & args]
+  (assert (string? path) "first parameter is a string path to the secret")
+
+  (s/with-path (get-path args)
+    (s/swap-secrets! dissoc (read-string path))))
+
 
 (defcommand help
   "Show help information, either in general or for a specific command."
   ["help"
-   "help eval"]
+   "help eval"
+   "help delete"]
   [& [_ command & _]]
   (if-let [details (get commands command)]
     (do
@@ -238,7 +248,9 @@
       (println "\tsecrets" (get-in commands ["write" :examples 0]))
       (println "\tsecrets" (get-in commands ["write" :examples 1]))
       (println "\tsecrets" (get-in commands ["read" :examples 0]))
+      (println "\tsecrets" (get-in commands ["delete" :examples 0]))
       (println "\nSee: <https://github.com/SixtantIO/secrets>"))))
+
 
 
 (defmethod command :default [& _] (command "help"))
