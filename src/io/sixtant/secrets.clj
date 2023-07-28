@@ -62,15 +62,18 @@
   "Generate a 16 byte random salt."
   (bytes->b64 (nonce/random-bytes 16)))
 
-(defn slow-key-stretch-with-pbkdf2 [weak-text-key salt n-bytes]
-  "Modified to take in a salt parameter."
-  (kdf/get-bytes
-   (kdf/engine {:key weak-text-key
-                :salt (b64->bytes salt)
-                :alg :pbkdf2
-                :digest :sha512
-                :iterations 1e5}) ;; target O(100ms) on commodity hardware
-   n-bytes))
+(defn slow-key-stretch-with-pbkdf2
+  ([weak-text-key salt n-bytes]
+   "Function that takes a salt parameter."
+   (kdf/get-bytes
+    (kdf/engine {:key weak-text-key
+                 :salt (b64->bytes salt)
+                 :alg :pbkdf2
+                 :digest :sha512
+                 :iterations 1e5}) ;; target O(100ms) on commodity hardware
+    n-bytes)))
+
+
 
 (defn encrypt
   "Modified to generate and store a random salt."
@@ -87,19 +90,22 @@
      :salt salt}))
 
 (defn decrypt
-  "Modified to take in a salt parameter."
+  "Modified to check if salt is present and call the appropriate function."
   [{:keys [data iv salt]} password]
-  (try
-    (codecs/bytes->str
-      (crypto/decrypt
+  (let [key-stretch-fn (if salt
+                         #(slow-key-stretch-with-pbkdf2 % salt 64)
+                         #(slow-key-stretch-with-pbkdf2 % "j3gT0zoPJos=" 64))]
+    (try
+      (codecs/bytes->str
+       (crypto/decrypt
         (b64->bytes data)
-        (slow-key-stretch-with-pbkdf2 password salt 64)
+        (key-stretch-fn password)
         (b64->bytes iv)
         {:algorithm :aes256-cbc-hmac-sha512}))
-    (catch ExceptionInfo e
-      (if (= (:type (ex-data e)) :validation)
-        (throw (ex-info "passphrase incorrect" {}))
-        (throw e)))))
+      (catch ExceptionInfo e
+        (if (= (:type (ex-data e)) :validation)
+          (throw (ex-info "passphrase incorrect" {}))
+          (throw e))))))
 
 
 
