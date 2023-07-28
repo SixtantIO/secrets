@@ -216,7 +216,8 @@
   (assert (string? path) "first parameter is a string path to the secret")
 
   (s/with-path (get-path args)
-    (s/swap-secrets! dissoc (read-string path))))
+    (s/swap-secrets! s/dissoc-in (read-string path))))
+
 
 
 (defcommand help

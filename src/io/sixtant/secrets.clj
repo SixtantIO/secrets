@@ -257,21 +257,28 @@
       (update :password #(or % (read-password "Password:")))
       (write-secrets)))
 
-
 (defn dissoc-in
-  "Dissociates an entry at a nested associative structure
-   found via a sequence of keys."
+  "Dissociates an entry from a nested associative structure returning a new 
+  nested structure. keys is a sequence of keys. Any empty maps that result 
+  will not be present in the new structure."
   [m [k & ks]]
-  (if ks
-    (if-let [submap (get m k)]
-      (assoc m k (dissoc-in submap ks))
-      m)
-    (dissoc m k)))
+  (let [m' (if ks
+             (if-let [submap (get m k)]
+               (let [submap' (dissoc-in submap ks)]
+                 (if (empty? submap')
+                   (dissoc m k)
+                   (assoc m k submap')))
+               m)
+             (dissoc m k))]
+    (if (empty? m') nil m')))
+
+
 
 (defn delete-secret!
-  "Deletes a secret at the given path."
-  [ks]
-  (swap-secrets! dissoc-in ks))
+  "Delete a secret from the secrets map. Takes a key path vector as input."
+  [path]
+  (swap-secrets! dissoc-in path))
+
 
 
 (comment
