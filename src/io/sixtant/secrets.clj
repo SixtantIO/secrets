@@ -58,13 +58,13 @@
 (defn b64->bytes [^String s] (.decode (Base64/getDecoder) (.getBytes s)))
 
 
-(defn gen-random-salt []
+(defn gen-random-salt 
   "Generate a 16 byte random salt."
+  []
   (bytes->b64 (nonce/random-bytes 16)))
 
 (defn slow-key-stretch-with-pbkdf2
   ([weak-text-key salt n-bytes]
-   "Function that takes a salt parameter."
    (kdf/get-bytes
     (kdf/engine {:key weak-text-key
                  :salt (b64->bytes salt)
@@ -89,23 +89,50 @@
      :iv (bytes->b64 initialization-vector)
      :salt salt}))
 
+
+
+
+
+
 (defn decrypt
-  "Modified to check if salt is present and call the appropriate function."
+  "Modified to add more logging and ensure key stretching before decryption."
   [{:keys [data iv salt]} password]
-  (let [key-stretch-fn (if salt
-                         #(slow-key-stretch-with-pbkdf2 % salt 64)
-                         #(slow-key-stretch-with-pbkdf2 % "j3gT0zoPJos=" 64))]
+  (let [password-str (String. password)]
+    (println "Starting decryption...")
+    (println "Password string obtained.")
     (try
-      (codecs/bytes->str
-       (crypto/decrypt
-        (b64->bytes data)
-        (key-stretch-fn password)
-        (b64->bytes iv)
-        {:algorithm :aes256-cbc-hmac-sha512}))
+      (println "Preparing key stretching function...")
+      (let [stretched-key (if salt
+                            (do
+                              (println "Salt provided, using it for key stretching.")
+                              (slow-key-stretch-with-pbkdf2 password-str salt 64))
+                            (do
+                              (println "No salt provided, using default salt value.")
+                              (slow-key-stretch-with-pbkdf2 password-str "j3gT0zoPJos=" 64)))]
+        (println "Stretched key length:" (count stretched-key)) ; Debug line to check the length of the stretched key.
+
+        (if-not (= (count stretched-key) 64)
+          (do
+            (println "Error: Stretched key is not 32 bytes long for AES-256.")
+            (throw (AssertionError. "Stretched key is not 32 bytes long for AES-256.")))
+          (do
+            (println "Stretched key is correct length, proceeding with decryption.")
+            (codecs/bytes->str
+             (crypto/decrypt
+              (b64->bytes data)
+              stretched-key
+              (b64->bytes iv)
+              {:algorithm :aes256-cbc-hmac-sha512})))))
       (catch ExceptionInfo e
+        (println "Caught exception during decryption:" e)
         (if (= (:type (ex-data e)) :validation)
-          (throw (ex-info "passphrase incorrect" {}))
-          (throw e))))))
+          (do
+            (println "Decryption failed: passphrase incorrect.")
+            (throw (ex-info "Passphrase incorrect" {})))
+          (do
+            (println "Decryption failed due to an unexpected error.")
+            (throw e)))))))
+
 
 
 
@@ -137,12 +164,15 @@
       (.add panel pass)
       (.requestFocus pass)
       (JOptionPane/showOptionDialog
-        nil panel "Password" JOptionPane/OK_OPTION
-        JOptionPane/PLAIN_MESSAGE nil
-        (into-array String ["Ok"]) "Ok")
+       nil panel "Password" JOptionPane/OK_OPTION
+       JOptionPane/PLAIN_MESSAGE nil
+       (into-array String ["Ok"]) "Ok")
       (String. (.getPassword pass)))
     (catch Exception e
+      (println "Caught an exception while reading password via Swing: " (.getMessage e))
       nil)))
+
+
 
 
 (defn read-password
